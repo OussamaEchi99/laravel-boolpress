@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Post;
 use App\Category;
+use App\Tag;
 use Illuminate\Support\Str;
 
 
@@ -35,9 +36,11 @@ class PostController extends Controller
     public function create()
     {
         $categories = Category::all();
+        $tags = Tag::all();
 
         $data = [
-            'categories' => $categories
+            'categories' => $categories,
+            'tags' => $tags
         ];
 
         return view('admin.posts.create', $data);
@@ -60,6 +63,10 @@ class PostController extends Controller
         $new_post->slug = $this->getUniqueSlugFromTitle($form_data['title']);
 
         $new_post->save();
+
+        if(isset($form_data['tags'])) {
+            $new_post->tags()->sync($form_data['tags']);
+        }
 
         return redirect()->route('admin.posts.show', ['post' => $new_post->id]);
     }
@@ -91,10 +98,12 @@ class PostController extends Controller
     {
         $post = Post::findOrFail($id);
         $categories = Category::all();
+        $tags = Tag::all();
 
         $data = [
             'post' => $post,
-            'categories' => $categories
+            'categories' => $categories,
+            'tags' => $tags
         ];
 
         return view('admin.posts.edit', $data);
@@ -120,6 +129,12 @@ class PostController extends Controller
         
         $post->update($form_data);
 
+        if(isset($form_data['tags'])) {
+            $post->tags()->sync($form_data['tags']);
+        } else {
+            $post->tags()->sync([]);
+        }
+
         return redirect()->route('admin.posts.show', ['post' => $post->id]);
     }
 
@@ -132,6 +147,7 @@ class PostController extends Controller
     public function destroy($id)
     {
         $post = Post::findOrFail($id);
+        $post->tags()->sync([]);
         $post->delete();
 
         return redirect()->route('admin.posts.index');
@@ -141,7 +157,8 @@ class PostController extends Controller
         return [
             'title' => 'required|max:255',
             'content' => 'required|max:60000',
-            'category_id' => 'exists:categories,id|nullable'
+            'category_id' => 'exists:categories,id|nullable',
+            'tags' => 'exists:tags,id'
         ];
     }
 
